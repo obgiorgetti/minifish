@@ -1,0 +1,415 @@
+---
+title: "Minifish markdown"
+author: "Orlando Bruno Giorgetti"
+date: "2/6/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(reshape2)
+library(ggplot2)
+library(Biostrings)
+library(dplyr)
+library(igraph)
+pc.chart = function(pc.list,i,j,k=0)sapply(pc.list[ sapply(pc.list,length)>=(i+k)],function(x)sapply(pc.list[ sapply(pc.list,length)>=(i+k)],function(y)length(intersect(x[sample((1+k):(i+k),j)],y[sample((1+k):(i+k),j)]))))
+pc.chart.full = function(pc.list,j,k=0)sapply(pc.list[ sapply(pc.list,length)>=(k+j)],function(x)sapply(pc.list[ sapply(pc.list,length)>=(j)],function(y)length(intersect(x[sample((1+k):length(x),j)],y[sample((1+k):length(y),j)]))))
+matrix.builder <- function(distancia){
+    matriz = as.matrix(distancia)
+    matriz[upper.tri(matriz)] <- NA
+    diag(matriz) = NA
+    return(matriz)  
+}
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+```
+
+
+```{r Minifish statistics, echo = FALSE, message=FALSE, results='hide',warning=FALSE,fig.keep='all'}
+load(file = "MF.list")
+MF.x.list = MF.list
+MF.fish.names = c("Fish 2","Fish 3","Fish 4","Fish 5")
+MF.gene.names = c("TCRa","TCRb","TCRg","TCRd","IgH")
+names(MF.x.list) = MF.gene.names
+for (i in 1:length(MF.x.list))names(MF.x.list[[i]]) = MF.fish.names
+MF.Ja.alleles.names = c(1,6,10,12,21,30,31,34,39,42,43,45,47,48,50,51,55,60)
+MF.x.df = lapply(MF.x.list,function(x)do.call(rbind,x))
+MF.x.df = lapply(MF.x.df,function(x)cbind(x,fish=sub("\\..*","",rownames(x))))
+```
+
+# Minifish clones
+
+Number of clones
+
+```{r Clones,echo = FALSE}
+MF.df.clones = data.frame(sapply(MF.x.list,function(x)sapply(x,nrow)),row.names = MF.fish.names)
+colnames(MF.df.clones) = MF.gene.names
+kable(MF.df.clones)
+MF.df.clones.melt = melt(MF.df.clones,measure.vars = colnames(MF.df.clones))
+MF.df.clones.melt$fish = c(MF.fish.names)
+ggplot(data = MF.df.clones.melt[1:16,]) + geom_bar( mapping = aes (x = fish,y =value,fill = variable), width = 0.5,stat = "identity") + ylab ("clone count" ) + ggtitle ("clone count")
+ggplot(data = MF.df.clones.melt[17:20,]) + geom_bar( mapping = aes (x = fish,y =value,fill = variable), width = 0.5,stat = "identity") + ylab ("clone count" ) + ggtitle ("clone count")
+
+```
+
+
+# Minifish cDNA molecules per fish
+
+Number of UMIs matched to a receptor sequence (not unique)
+
+```{r Molecules,echo = FALSE}
+MF.df.molecules = data.frame(sapply(MF.x.list,function(x)sapply(x,function(y)sum(y$Umi.count))),row.names = MF.fish.names)
+
+colnames(MF.df.molecules) = MF.gene.names
+kable(MF.df.molecules)
+MF.df.molecules.melt = melt(MF.df.molecules,measure.vars = colnames(MF.df.molecules))
+MF.df.molecules.melt$fish = c(MF.fish.names)
+ggplot(data = MF.df.molecules.melt[1:16,]) + geom_bar( mapping = aes (x = fish,y =value,fill = variable), width = 0.5,stat = "identity") + ylab ("UMI/cDNA molecules count" ) + ggtitle ("TCR UMI count")
+ggplot(data = MF.df.molecules.melt[17:20,]) + geom_bar( mapping = aes (x = fish,y =value,fill = variable), width = 0.5,stat = "identity")+ ylab ("UMI/cDNA molecules count" ) + ggtitle ("IgH UMI count")
+
+```
+
+
+# Structure of the TCR alpha beta repertoire
+
+
+
+```{r Structure, echo = FALSE}
+ggplot(MF.x.list$TCRa$`Fish 5`) + geom_point(mapping = aes(y=Umi.proportion, x = 1:length(Umi.proportion),color = factor(ceiling(cumsum(MF.x.list$TCRa$`Fish 5`$Umi.proportion)/0.2)))) + labs (color = "Quintile") + xlab("Sequence rank") + ylab("Umi count proportion") + ggtitle("TCR alpha rank-frequency plot")
+```
+
+
+
+
+
+
+```{r Structure beta, echo = FALSE}
+
+ggplot(MF.x.list$TCRb$`Fish 5`) + geom_point(mapping = aes(y=Umi.proportion, x = 1:length(Umi.proportion),color = factor(ceiling(cumsum(MF.x.list$TCRb$`Fish 5`$Umi.proportion)/0.2)))) + labs (color = "Quintile") + xlab("Sequence rank") + ylab("Umi count proportion") + ggtitle("TCR beta rank-frequency plot")
+```
+Approximately half of the Molecules(Cells) in TCR alpha are distributed among the top 250 clones, 
+while the remaining 3500 molecules are distributed across 2500 clones
+
+Approximately half of the Molecules(Cells) in TCR beta are distributed among the top 500 clones, 
+while the remaining 3500 molecules are distributed across 2100 clones
+
+# Structure of the TCR gamma repertoire
+
+
+Approximately half of the Molecules(Cells) in TCR beta are distributed among the top 500 clones, 
+while the remaining 3500 molecules are distributed across 2100 clones
+
+
+```{r Structure gamma, echo = FALSE}
+
+ggplot(MF.x.list$TCRg$`Fish 5`) + geom_point(mapping = aes(y=Umi.proportion, x = 1:length(Umi.proportion),color = factor(ceiling(cumsum(MF.x.list$TCRg$`Fish 5`$Umi.proportion)/0.2)))) + labs (color = "Quintile") + xlab("Sequence rank") + ylab("Umi count proportion") + ggtitle("TCR gamma rank-frequency plot")
+```
+
+```{r Structure delta, echo = FALSE}
+
+ggplot(MF.x.list$TCRd$`Fish 5`) + geom_point(mapping = aes(y=Umi.proportion, x = 1:length(Umi.proportion),color = factor(ceiling(cumsum(MF.x.list$TCRd$`Fish 5`$Umi.proportion)/0.2)))) + labs (color = "Quintile") + xlab("Sequence rank") + ylab("Umi count proportion") + ggtitle("TCR delta rank-frequency plot")
+```
+
+```{r Structure IgH, echo = FALSE}
+
+ggplot(MF.x.list$IgH$`Fish 5`) + geom_point(mapping = aes(y=Umi.proportion, x = 1:length(Umi.proportion),color = factor(ceiling(cumsum(MF.x.list$IgH$`Fish 5`$Umi.proportion)/0.2)))) + labs (color = "Quintile") + xlab("Sequence rank") + ylab("Umi count proportion") + ggtitle("IgH rank-frequency plot")
+```
+
+# Singletons
+How many of the cDNA molecules are singletons (only one cDNA found for that receptor)
+
+```{r Singletons, echo = FALSE}
+MF.df.singletons = data.frame(sapply(MF.x.list,function(x)sapply(x,function(y)mean(y$Umi.count==1))),row.names = MF.fish.names)
+colnames(MF.df.singletons) = MF.gene.names
+kable(round(MF.df.singletons,3))
+```
+
+# Publicity
+
+
+```{r Publicity table, echo = FALSE,fig.width= 12,fig.height=10}
+
+  
+pub.df = data.frame(publicity = 1:4,sapply(1:5,function(i)table(do.call(rbind,MF.x.list[[i]])$pub)/1:4))
+colnames(pub.df)[2:6] = MF.gene.names
+kable(pub.df)
+```
+
+```{r Publicity, echo = FALSE,fig.width= 12,fig.height=10}
+{
+a=prop.table(table(MF.x.df$TCRa[!duplicated(MF.x.df$TCRa$pc.nt) & MF.x.df$TCRa$fish != "Fish 1",]$pub))
+b=prop.table(table(MF.x.df$TCRb[!duplicated(MF.x.df$TCRb$pc.nt) & MF.x.df$TCRb$fish != "Fish 1",]$pub))
+
+pub_ab=data.frame(proportion = c(a,b),publicity = rep(1:4,2), gene = rep(c("TCRa","TCRb"),each =4))
+
+ggplot(data = pub_ab) + 
+  geom_point( mapping = aes (x = publicity,y =proportion,shape = gene),size = 5) +
+  geom_line( mapping = aes (x = publicity,y =proportion,color = gene)) +
+   theme(text = element_text(size=24) )
+
+}
+```
+
+```{r Publicity 2, echo = FALSE,fig.width= 12,fig.height=10}
+
+ggplot(data = pub_ab,mapping =  aes (x = log(publicity),y =log(proportion),shape = gene,color = gene)) + 
+  geom_point(color = "black",size = 7) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_classic() +
+   theme(text = element_text(size=10),
+       axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+       axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+       )
+
+
+
+g=prop.table(table(MF.x.df$TCRg[!duplicated(MF.x.df$TCRg$pc.nt) & MF.x.df$TCRg$fish != "Fish 1",]$pub))
+d=prop.table(table(MF.x.df$TCRd[!duplicated(MF.x.df$TCRd$pc.nt) & MF.x.df$TCRd$fish != "Fish 1",]$pub))
+
+pub_gd=data.frame(proportion = c(g,d),publicity = rep(1:4,2), gene = rep(c("TCRg","TCRd"),each =4))
+
+pub_gd$gene = factor(pub_gd$gene, levels = c("TCRg","TCRd"))
+```
+
+```{r Publicity 3, echo = FALSE,fig.width= 12,fig.height=10}
+
+ggplot(data = pub_gd) + 
+  geom_point( mapping = aes (x = publicity,y =proportion,shape = gene),size = 5) +
+  geom_line( mapping = aes (x = publicity,y =proportion,color = gene)) +
+  scale_shape_manual(values=c(16,17)) + 
+  scale_color_manual(values=c( gg_color_hue(4)[2],gg_color_hue(4)[4])) +
+  theme(text = element_text(size=24) )
+```
+
+```{r Publicity 4, echo = FALSE,fig.width= 12,fig.height=10}
+
+ggplot(data = pub_gd,mapping =  aes (x = log(publicity),y =log(proportion),shape = gene,color = gene)) + 
+  geom_point(color = "black",size = 7) +
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_shape_manual(values=c(16,17)) + 
+  scale_color_manual(values=c( gg_color_hue(4)[2],gg_color_hue(4)[4])) +
+   theme_classic() +
+ theme(text = element_text(size=24),
+       axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+       axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+       )
+
+
+#ggplot(data = MF.x.df$TCRb) + geom_bar( mapping = aes (x = pub),position = "dodge") + facet_wrap( ~fish)  + labs(title="TCR beta publicity")
+#kable(table(MF.x.df$TCRa$pub))
+```
+
+```{r Publicity 5, echo = FALSE,fig.width= 12,fig.height=10}
+{
+g=make_full_graph(4, directed = FALSE, loops = FALSE)
+V(g)$label = paste0("Fish_",2:5)
+sh=as.numeric(matrix.builder(pc.chart(lapply(MF.x.list$TCRa,function(x)x$pc.nt),500,500)))
+sh = sh[!is.na(sh)]
+sh2=as.numeric(matrix.builder(pc.chart(lapply(MF.x.list$TCRb,function(x)x$pc.nt),500,500)))
+sh2 = sh2[!is.na(sh2)]
+#E(g)$width = sh/10
+
+E(g)$width = sh/6
+E(g)$color =gg_color_hue(2)[1]
+g3 = add_edges(g,c(1,2, 1,3, 1,4, 2,3, 2,4, 3,4))
+E(g3)$width[7:12] = sh2/6
+E(g3)$color[7:12] = gg_color_hue(2)[2]
+E(g3)$curved = rep(c(-0.15,0.15),each=6)
+lkk = layout.kamada.kawai(g3)
+plot(g3,vertex.frame.color = "grey", vertex.color  = "grey",vertex.size = 20, vertex.label.color = "black",layout = lkk)
+}
+```
+
+```{r Publicity 6, echo = FALSE,fig.width= 12,fig.height=10}
+
+
+pub.mean = data.frame(gene = c("TCRa","TCRb"),mean = c(mean(sh,na.rm = TRUE),mean(sh2,na.rm = TRUE)))
+
+sh.names = c("2_3","2_4","2_5","3_4","3_5","4_5")
+sh.a.df = data.frame(sh,sh.names)
+sh.b.df = data.frame(sh2,sh.names)
+
+sh.table.1= cbind(sh.a.df, x = 1)
+sh.table.2= cbind(sh.b.df, x = 2)
+colnames(sh.table.2)[1] = "sh"
+sh.table = rbind(sh.table.1,sh.table.2)
+```
+
+```{r Publicity 7, echo = FALSE,fig.width= 10,fig.height=12}
+
+ggplot(data = pub.mean) + geom_bar(mapping = aes (x = gene , y=mean, fill = gene) , width = 0.3,stat = "identity") + 
+  ggtitle ("Mean pairwise overlap top 500 clones") + 
+  geom_point(data = sh.a.df,mapping = aes (x = 1, y = sh)) +
+  geom_line (data = sh.table,mapping = aes(x = x, y = sh,group = sh.names)) +
+  geom_text(data = sh.a.df,mapping = aes (x = rep(0.8,6), y = sh+c(-0,+0,rep(0,4)), label = sh.names,fontface = "italic"),size = 8) +
+  geom_point(data = sh.b.df,mapping = aes (x = 2, y = sh2)) +
+  geom_text(data = sh.b.df,mapping = aes (x = c(1.8,2.2,2.2,2.2,2.2,2.2), y = sh2+c(-0,+0,-1,rep(0,3)), label = sh.names,fontface = "italic"),size = 8) +
+  theme(text = element_text(size=20),
+        axis.text=element_text(size=20)) 
+
+```
+
+```{r Publicity 8, echo = FALSE,fig.width= 10,fig.height=10}
+
+{
+g=make_full_graph(4, directed = FALSE, loops = FALSE)
+V(g)$label = paste0("Fish_",2:5)
+sh=as.numeric(matrix.builder(pc.chart(lapply(MF.x.list$TCRg,function(x)x$pc.nt),80,80)))
+sh = sh[!is.na(sh)]
+sh2=as.numeric(matrix.builder(pc.chart(lapply(MF.x.list$TCRd,function(x)x$pc.nt),80,80)))
+sh2 = sh2[!is.na(sh2)]
+#E(g)$width = sh/6.25 # proportional to the number of clones sampled in relationship to alpha/beta
+E(g)$width = sh # proportional to the number of clones sampled in relationship to alpha/beta
+
+E(g)$color =gg_color_hue(4)[2]
+g3 = add_edges(g,c(1,2, 1,3, 1,4, 2,3, 2,4, 3,4))
+E(g3)$width[7:12] = sh2
+E(g3)$color[7:12] = gg_color_hue(4)[4]
+E(g3)$curved = rep(c(-0.15,0.15),each=6)
+
+
+
+
+plot(g3,vertex.frame.color = "grey", vertex.color  = "grey",vertex.size = 20, vertex.label.color = "black",layout = lkk)
+}
+
+pub.mean = data.frame(gene = factor(c("TCRg","TCRd"),levels =c("TCRg","TCRd") ),mean = c(mean(sh,na.rm = TRUE),mean(sh2,na.rm = TRUE)))
+
+sh.names = c("2_3","2_4","2_5","3_4","3_5","4_5")
+sh.g.df = data.frame(sh,sh.names)
+sh.d.df = data.frame(sh2,sh.names)
+
+sh.table.1= cbind(sh.g.df, x = 1)
+sh.table.2= cbind(sh.d.df, x = 2)
+colnames(sh.table.2)[1] = "sh"
+sh.table = rbind(sh.table.1,sh.table.2)
+```
+
+```{r Publicity 9, echo = FALSE,fig.width= 10,fig.height=12}
+
+ggplot(data = pub.mean) + geom_bar(mapping = aes (x = gene , y=mean, fill = gene) , width = 0.3,stat = "identity") + 
+  ggtitle ("Mean pairwise overlap top 80 clones") + 
+  geom_point(data = sh.g.df,mapping = aes (x = 1, y = sh)) +
+  geom_line (data = sh.table,mapping = aes(x = x, y = sh,group = sh.names)) +
+  geom_text(data = sh.g.df,mapping = aes (x = c(0.8,0.8,0.8,rep(0.8,3)), y = sh, label = sh.names,fontface = "italic"),size = 8) +
+  theme(text = element_text(size=20) ) +
+  geom_point(data = sh.d.df,mapping = aes (x = 2, y = sh2)) +
+  geom_text(data = sh.d.df,mapping = aes (x = c(2.2,2.2,2.4,2.4,rep(2.2,2)), y = sh2+(c(0,0,0,0,0,0)), label = sh.names,fontface = "italic"),size = 8)  +
+  scale_fill_manual(values=c( gg_color_hue(4)[2],gg_color_hue(4)[4]))+
+  theme(text = element_text(size=20),
+        axis.text=element_text(size=20)) 
+
+
+```
+
+# Length plots
+
+
+```{r Length plots, echo=FALSE}
+
+
+ggplot(data = MF.x.df$TCRa[MF.x.df$TCRa$L <60,]) + geom_bar( mapping = aes (x = L),position = "dodge") + labs(title="TCR alpha")
+ggplot(data = MF.x.df$TCRa[MF.x.df$TCRa$L <60,]) + geom_bar( mapping = aes (x = L,weight = Umi.count),position = "dodge") + labs(title="TCR alpha weighted")
+ggplot(data = MF.x.df$TCRb[MF.x.df$TCRb$L <60,]) + geom_bar( mapping = aes (x = L),position = "dodge") + labs(title="TCR beta")
+ggplot(data = MF.x.df$TCRb[MF.x.df$TCRb$L <60,]) + geom_bar( mapping = aes (x = L,weight = Umi.count),position = "dodge") + labs(title="TCR beta weighted")
+
+ggplot(data = MF.x.df$TCRg[MF.x.df$TCRg$L <80,]) + geom_bar( mapping = aes (x = L),position = "dodge") + labs(title="TCR gamma")
+ggplot(data = MF.x.df$TCRg[MF.x.df$TCRg$L <80,]) + geom_bar( mapping = aes (x = L,weight = Umi.count),position = "dodge") + labs(title="TCR gamma weighted")
+ggplot(data = MF.x.df$TCRd[MF.x.df$TCRd$L <80,]) + geom_bar( mapping = aes (x = L),position = "dodge") + labs(title="TCR delta")
+ggplot(data = MF.x.df$TCRd[MF.x.df$TCRd$L <80,]) + geom_bar( mapping = aes (x = L,weight = Umi.count),position = "dodge") + labs(title="TCR delta weighted")
+ggplot(data = MF.x.df$IgH[MF.x.df$IgH$L <55,]) + geom_bar( mapping = aes (x = L),position = "dodge")+ labs(title="IgH")
+ggplot(data = MF.x.df$IgH[MF.x.df$IgH$L <55,]) + geom_bar( mapping = aes (x = L,weight = Umi.count),position = "dodge")+ labs(title="IgH weighted")
+
+```
+
+# Alpha Delta usage
+
+predominant delta are at least 10 times more frequent molecules as delta than alpha
+
+
+```{r AD usage plots, echo=FALSE}
+load("MF_Vas.5")
+MF.ad.usage = cbind(data.frame(as.numeric(table(factor(MF.x.df$TCRa$V.gene,levels =names(MF_Vas.5))))),data.frame(as.numeric(table(factor(MF.x.df$TCRd$V.gene,levels = names(MF_Vas.5))))))
+colnames(MF.ad.usage) = c("alphas","deltas")
+rownames(MF.ad.usage) = names(MF_Vas.5)
+MF.ad.usage = mutate(MF.ad.usage,exclusive = alphas ==0 | deltas ==0 )
+MF.ad.usage$type = "predominant alpha"
+MF.ad.usage$type[MF.ad.usage$delta ==0 & MF.ad.usage$alpha ==0] = "not used"
+MF.ad.usage$type[MF.ad.usage$exclusive == TRUE & MF.ad.usage$delta >0] = "exclusive delta"
+MF.ad.usage$type[MF.ad.usage$exclusive == TRUE & MF.ad.usage$alpha >0] = "exclusive alpha"
+
+MF.ad.usage$type[MF.ad.usage$deltas >10 & MF.ad.usage$alpha >0& MF.ad.usage$alpha < 50] = "predominant delta"
+
+MF.ad.usage %>%
+  ggplot(mapping = aes(x = alphas, y = deltas, color = type)) +
+  geom_point() +
+  ggtitle ("TCR alpha vs delta usage for V elements") +
+  xlab ("usage as TCR alpha (clones)") +
+  ylab ("usage as TCR delta (clones)") 
+#kable(MF.ad.usage)
+ggplot(MF.ad.usage[MF.ad.usage$alphas>0 & MF.ad.usage$deltas >0,]) + 
+  geom_point( mapping = aes(x = 1:length(alphas), y = log10 (alphas/deltas))) + 
+  ggtitle ("log ratio of recombination with alpha and delta") +
+  xlab ("V element") +
+  ylab ("log(ratio a/d)") 
+
+#plot(apply(MF.ad.usage[MF.ad.usage$alphas>0 & MF.ad.usage$deltas >0,],1,function(x)log2(as.numeric(x[1])/as.numeric(x[2]))),ylab = "log2 alpha/delta usage",xlab = "shared v elements")
+kable(MF.ad.usage[MF.ad.usage$alphas>0 & MF.ad.usage$deltas >0,])
+```
+
+```{r jitter plots, echo=FALSE}
+ ggplot(data = MF.x.df$TCRa) + geom_jitter( mapping = aes (x = pub, y = Umi.proportion,color = fish))  +
+  ggtitle ("TCR alpha")
+ ggplot(data = MF.x.df$TCRb) + geom_jitter( mapping = aes (x = pub, y = Umi.proportion,color = fish)) +
+  ggtitle ("TCR beta")
+ ggplot(data = MF.x.df$TCRg) + geom_jitter( mapping = aes (x = pub, y = Umi.proportion,color = fish)) +
+     ggtitle ("TCR gamma")
+
+ ggplot(data = MF.x.df$TCRd) + geom_jitter( mapping = aes (x = pub, y = Umi.proportion,color = fish)) +
+   ggtitle ("TCR delta")
+ ggplot(data = MF.x.df$IgH) + geom_jitter( mapping = aes (x = pub, y = Umi.proportion,color = fish)) +
+      ggtitle ("Ig H")
+
+
+```
+
+```{r heatmaps, echo=FALSE}
+hm.table = table(MF.x.df$TCRa$V.gene,MF.x.df$TCRa$fish)
+hm.table = apply(hm.table,2,function(x)x/sum(x))
+hm.counts = as.numeric(hm.table)
+hm.df = data.frame(counts = hm.counts,v=rownames(hm.table),fish=rep(MF.fish.names,each=nrow(hm.table)))
+ggplot(data = hm.df, mapping = aes(y = v , x = fish, fill = counts )) + geom_tile() + labs(fill = "fraction of UMI counts")
+
+
+hm.table = table(c(1:61,MF.Ja.alleles.names)[as.numeric(MF.x.df$TCRa$J.gene)],MF.x.df$TCRa$fish)
+hm.table = apply(hm.table,2,function(x)x/sum(x))
+hm.counts = as.numeric(hm.table)
+hm.df = data.frame(counts = hm.counts,j=rownames(hm.table),fish=rep(MF.fish.names,each=nrow(hm.table)))
+ggplot(data = hm.df, mapping = aes(y = j , x = fish, fill = counts )) + geom_tile() + labs(title = "tcra assemblies", fill = "fraction of UMI counts")
+
+hm.table = table(MF.x.df$TCRb$V.gene,MF.x.df$TCRb$fish)
+hm.table = apply(hm.table,2,function(x)x/sum(x))
+hm.counts = as.numeric(hm.table)
+hm.df = data.frame(counts = hm.counts,v=rownames(hm.table),fish=rep(MF.fish.names,each=nrow(hm.table)))
+ggplot(data = hm.df, mapping = aes(y = v , x = fish, fill = counts )) + geom_tile() + labs(title = "tcrb assemblies", fill = "fraction of UMI counts")
+
+hm.table = table(MF.x.df$TCRb$J.gene,MF.x.df$TCRb$fish)
+hm.table = apply(hm.table,2,function(x)x/sum(x))
+hm.counts = as.numeric(hm.table)
+hm.df = data.frame(counts = hm.counts,j=rownames(hm.table),fish=rep(MF.fish.names,each=nrow(hm.table)))
+ggplot(data = hm.df, mapping = aes(y = j , x = fish, fill = counts )) + geom_tile() + labs(title = "tcrb assemblies", fill = "fraction of UMI counts")
+```
+```
