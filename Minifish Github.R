@@ -1568,6 +1568,8 @@ path.MF.files.2="//Volumes/SONY HDD 1/Data/Project_758_Giorgetti_Boehm/"
         MF.ec = lapply(MF.ftp,error.correction.mk5)
         MF.tables.g[[s+10]]=do.call(rbind,lapply(MF.ec,function(x)x[[1]]))
         MF.errors.g[[s+10]]=do.call(rbind,lapply(MF.ec,function(x)do.call(rbind,x[[2]])))
+        MF.stats.g[[s+10]] = c(MF.umi$stats,CDR3.e = sum(CDR3.e$filter.CDR3.extractor), Canonical_CDR3 = length(CDR3.tr_fil), Canonical_UMI_thr = length(filter_UMI_CDR3) ,Corrected = sum(MF.tables.g[[s+10]][,3]),UMI_CDR3s = length(unique(UMI_CDR3[filter_UMI_CDR3])), Clones = nrow(MF.tables.g[[s+10]]))
+
       }
       # Delta
       CDR3.e = CDR3.extractor(MF.umi$R1,C.rc.pattern =  "TTTCAGGAACATC" ,start.of.triplet = 11)
